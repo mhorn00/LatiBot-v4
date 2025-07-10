@@ -1,0 +1,43 @@
+include: package:lints/recommended.yaml
+
+analyzer:
+  exclude: [build/**]
+  language:
+  errors:
+    #style rules
+    always_declare_return_types: warning
+    avoid_print: info #warning
+    prefer_asserts_with_message: error
+    prefer_function_declarations_over_variables: ignore
+    unnecessary_this: ignore
+    unrelated_type_equality_checks: warning
+
+linter:
+  rules:
+    #naming rules
+    package_names: false # package names prefer lowercase_with_underscores
+    file_names: false # file names prefer lowercase_with_underscores
+    non_constant_identifier_names: true # non-constant identifier prefer camelCase
+    constant_identifier_names: false # constant identifier names prefer camelCase
+    camel_case_types: true # type names prefer UpperCamelCase
+
+    #string rules
+    prefer_double_quotes: false # prefer double quotes
+    prefer_interpolation_to_compose_strings: true # prefer string interpolation to compose strings
+    unnecessary_brace_in_string_interps: false # unnecessary brace in string interpolation
+
+    #style rules
+    unnecessary_parenthesis: true # unnecessary parenthesis
+    always_declare_return_types: true # always declare return types
+    always_specify_types: false # always specify types
+    prefer_expression_function_bodies: true # prefer expression function bodies
+    avoid_print: false # avoid print statements
+    always_put_control_body_on_new_line: false # always put control body on new line
+    curly_braces_in_flow_control_structures: false # prefer curly braces in flow control structures
+    avoid_function_literals_in_foreach_calls: false # avoid function literals in foreach calls
+    prefer_const_constructors_in_immutables: true # TODO: enable this rule
+    prefer_asserts_with_message: true # prefer asserts with message
+    prefer_const_constructors: false # annoying rule
+    
+# Additional information about this file can be found at
+# https://dart.dev/guides/language/analysis-options
