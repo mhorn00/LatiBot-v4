@@ -1,13 +1,19 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+
+import 'package:meta/meta.dart';
+
+import 'package:crypto/crypto.dart';
 
 import 'package:nyxx/nyxx.dart';
 import 'package:nyxx_commands/nyxx_commands.dart';
 import 'package:yaml/yaml.dart';
 
-part 'LatiParts.p.dart';
-part 'LatiCommands.p.dart';
 part 'LatiListeners.p.dart';
+part 'LatiCommands.p.dart';
+part 'LatiParts.p.dart';
+part 'LatiNicknames.p.dart';
 
 typedef LatiBotConfig = ({
   Snowflake guildId,
@@ -75,6 +81,12 @@ sealed class LatiBot {
 
   /// Whether the commands plugin has been initialized.
   bool commandsPluginInitialized = false;
+
+  /// The audio manager instance for the bot.
+  final AudioManager audioManager = AudioManager();
+
+  late final Snowflake systemChannelId;
+
 //[ ===== ]
 //[ ===== Getters ===== ]
 
@@ -91,14 +103,23 @@ sealed class LatiBot {
 
   /// The [Snowflake] if of the guild the bot acts in.
   Snowflake get guildId => config.guildId;
+  PartialGuild get guildPartial => client.guilds[guildId];
+
+  bool get isReady => listeners.readyListener.readyCompleter.isCompleted;
 
   LatiBot get instance => _instance;
   PartialUser get user => client.user;
   Snowflake get latibotId => user.id;
 
+  Logger get logger => client.logger;
+  static Logger get slogger => _instance.logger;
+
   LatiPermsManager get permsManager => this as LatiPermsManager;
   LatiListeners get listeners => this as LatiListeners;
   LatiCommands get commandsManager => this as LatiCommands;
+  LatiStatus get statusManager => this as LatiStatus;
+  LatiMidnightManager get midnightManager => this as LatiMidnightManager;
+  LatiNicknames get nicknamesManager => this as LatiNicknames;
 //[ ===== ]
 //[ ===== Constructor ===== ]
   LatiBot._(this.config);
@@ -109,6 +130,8 @@ sealed class LatiBot {
 //[ ===== ]
 //[ ===== Initialization ===== ]
   Future<void> init(final String token);
+
+  void _ensureInitialized() => LatiBot._isInitialized ? () : throw StateError('Latibot is not initialized. Please call Latibot.init() first.');
 //[ ===== ]
 }
 
@@ -116,6 +139,9 @@ final class _LatiBotImpl extends LatiBot
     with
         LatiCommands,
         LatiPermsManager,
+        LatiStatus,
+        LatiMidnightManager,
+        LatiNicknames,
         LatiListeners,
         LatiReadyListener,
         LatiGuildMemberUpdateListener,
@@ -145,6 +171,7 @@ final class _LatiBotImpl extends LatiBot
 
   //[ ===== Methods ===== ]
 
+  /// Initializes the bot with the given token.
   @override
   Future<void> init(final String token) async {
     //> build the commands plugin
@@ -172,10 +199,23 @@ final class _LatiBotImpl extends LatiBot
     if (!guilds.any((g) => g.id == config.guildId)) throw Exception('Latibot is not in the guild with id ${config.guildId}. Please invite it to the guild first.');
 
     //> get the guild with the id from the config
-    // final UserGuild g = guilds.reduce((val, g) => g.id == guildId ? g : val);
+    final Guild g = await client.guilds.fetch(config.guildId);
+
+    //> latibot uses the system channel for errors and other messages
+    if (g.systemChannelId == null) throw Exception('Latibot is not in a guild with a system channel. Please set a system channel for the guild with id ${config.guildId}.');
+    this.systemChannelId = g.systemChannelId!;
+
+    //> init the bot status
+    statusManager.initStatus();
 
     //> wait for the bot to fire the ready event
     await listeners.readyListener.waitForReady;
+
+    //> Initialize nickname system
+    await nicknamesManager.initialize(client);
+
+    //> Schedule midnight message
+    LatiMidnightManager.scheduleMidnight();
 
     return;
   }
